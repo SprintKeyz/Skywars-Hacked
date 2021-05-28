@@ -65,6 +65,10 @@ public class SWHacksEvents implements Listener, CommandExecutor {
     public static HashMap<Player, Integer> kit = new HashMap<>();
     public static HashMap<Player, Boolean> canFly = new HashMap<>();
 
+    public static HashMap<Player, String> nametags = new HashMap<>();
+
+    public static HashMap<Player, Player> lastAttacker = new HashMap<>();
+
 
     World world = Bukkit.getWorld("world");
 
@@ -193,6 +197,7 @@ public class SWHacksEvents implements Listener, CommandExecutor {
 
             if (player.getDisplayName().equals("SprintKeyz")) {
                 changeName("§c" + player.getDisplayName(), player);
+                nametags.put(player, "§c" + player.getDisplayName());
                 player.setPlayerListName("§c[§fYOUTUBE§c] " + player.getDisplayName());
                 player.setDisplayName("§c[§fYOUTUBE§c] " + player.getDisplayName() + "§f");
                 playerRanks.put(player, "yt");
@@ -200,6 +205,7 @@ public class SWHacksEvents implements Listener, CommandExecutor {
 
             else {
                 changeName("§9" + player.getDisplayName(), player);
+                nametags.put(player, "§9" + player.getDisplayName());
                 player.setPlayerListName("§9[HACKER] " + player.getDisplayName());
                 player.setDisplayName("§9[HACKER] " + player.getDisplayName() + "§f");
                 playerRanks.put(player, "hacker");
@@ -751,6 +757,26 @@ public class SWHacksEvents implements Listener, CommandExecutor {
                 Player damager = (Player) e.getDamager();
                 player.setVelocity(player.getVelocity().setX(0).setY(0).setZ(0).normalize());
             }
+
+            if (e.getDamager() instanceof Player) {
+                Player damager = (Player) e.getDamager();
+                if (!lastAttacker.containsKey(player)) {
+
+                    lastAttacker.put(player, damager);
+
+                    Bukkit.getServer().getScheduler().scheduleSyncDelayedTask(JavaPlugin.getProvidingPlugin(SWHacksEvents.class), new Runnable() {
+                        @Override
+                        public void run() {
+                            lastAttacker.remove(player);
+                        }
+                    }, 600L);
+                }
+
+                else {
+                    lastAttacker.remove(player);
+                    lastAttacker.put(player, damager);
+                }
+            }
         }
     }
 
@@ -1023,13 +1049,6 @@ public class SWHacksEvents implements Listener, CommandExecutor {
     }
 
     @EventHandler
-    public void onPlayerDamage(EntityDamageEvent e) {
-        if (noDamage == true) {
-            e.setCancelled(true);
-        }
-    }
-
-    @EventHandler
     public void commandPreprocess(PlayerCommandPreprocessEvent e) {
         if (e.getMessage().contains("reload") || e.getMessage().contains("rl")) {
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "resetmap");
@@ -1240,10 +1259,6 @@ public class SWHacksEvents implements Listener, CommandExecutor {
             playerKills.put(killer, playerKills.get(killer) + 1);
         }
 
-        else {
-            e.setDeathMessage(player.getDisplayName() + "§e fell into the void!");
-        }
-
         if (Bukkit.getOnlinePlayers().size() - deadPlayers.size() <= 1) {
             for (Player pl : Bukkit.getOnlinePlayers()) {
                 pl.sendMessage("Game over!");
@@ -1255,6 +1270,9 @@ public class SWHacksEvents implements Listener, CommandExecutor {
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent e) {
+        e.setQuitMessage(null);
+        Bukkit.broadcastMessage(e.getPlayer().getDisplayName() + "§e has left (§b" + Bukkit.getOnlinePlayers().size() + "§e/§b12§e)!");
+
         Bukkit.getScheduler().scheduleSyncDelayedTask(JavaPlugin.getProvidingPlugin(SWHacksEvents.class), new Runnable() {
             @Override
             public void run() {
@@ -1274,6 +1292,79 @@ public class SWHacksEvents implements Listener, CommandExecutor {
     public void onLoseHunger(FoodLevelChangeEvent e) {
         if (!gameStarted) {
             e.setCancelled(true);
+        }
+
+        if (deadPlayers.contains((Player) e.getEntity())) {
+            e.setCancelled(true);
+        }
+    }
+
+
+    @EventHandler
+    public void onPlayerDamage(EntityDamageEvent e) {
+        if (noDamage) {
+            e.setCancelled(true);
+        }
+
+        if (e.getEntity() instanceof Player) {
+            Player player = (Player) e.getEntity();
+            if (e.getDamage() >= player.getHealth()) {
+                e.setCancelled(true);
+                player.getInventory().clear();
+                player.getInventory().setArmorContents(null);
+                if (e.getCause() == EntityDamageEvent.DamageCause.ENTITY_ATTACK) {
+                    if (lastAttacker.containsKey(player)) {
+                        Player damager = lastAttacker.get(player);
+                        Bukkit.broadcastMessage(nametags.get(player) + " §r§ewas killed by " + nametags.get(damager) + "§r§e.");
+                        killSequence(player);
+                    }
+                }
+
+                else if (e.getCause() == EntityDamageEvent.DamageCause.FALL) {
+                    if (lastAttacker.containsKey(player)) {
+                        Player damager = lastAttacker.get(player);
+                        Bukkit.broadcastMessage(nametags.get(player) + " §r§ewas knocked off a cliff by " + nametags.get(damager) + "§r§e.");
+                        killSequence(player);
+                    }
+
+                    else {
+                        Bukkit.broadcastMessage(nametags.get(player) + " §r§efell to their death!");
+                        killSequence(player);
+                    }
+                }
+            }
+        }
+    }
+
+    public void killSequence(Player player) {
+        if (!SWHacksEvents.deadPlayers.contains(player)) {
+            player.getInventory().clear();
+            player.setGameMode(GameMode.ADVENTURE);
+            player.setAllowFlight(true);
+            player.setHealth(20);
+            player.setFoodLevel(20);
+            player.setLevel(0);
+            player.setExp(0);
+            player.setFireTicks(0);
+            SWHacksEvents.deadPlayers.add(player);
+            player.teleport(new Location(player.getWorld(), 0, 100, 0));
+            for (PotionEffect e : player.getActivePotionEffects()) {
+                player.removePotionEffect(e.getType());
+            }
+            player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, Integer.MAX_VALUE, 0, false, false));
+            for (Player pl1 : Bukkit.getOnlinePlayers()) {
+                if (pl1 != player) {
+                    pl1.hidePlayer(player);
+                }
+            }
+
+            if (SWHacksEvents.lastAttacker.containsKey(player)) {
+                SWHacksEvents.playerKills.put(SWHacksEvents.lastAttacker.get(player), SWHacksEvents.playerKills.getOrDefault(SWHacksEvents.lastAttacker.get(player), 0) + 1);
+            }
+        }
+
+        else {
+            player.teleport(new Location(player.getWorld(), 0, 100, 0));
         }
     }
 

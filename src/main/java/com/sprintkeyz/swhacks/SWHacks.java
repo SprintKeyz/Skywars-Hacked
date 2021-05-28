@@ -4,8 +4,10 @@ import com.sprintkeyz.swhacks.events.SWHacksEvents;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -25,7 +27,7 @@ public class SWHacks extends JavaPlugin {
     @Override
     public void onEnable() {
         // check stuff
-        //checkYLevel();
+        checkYLevel();
 
 
         // update gamerules
@@ -57,16 +59,39 @@ public class SWHacks extends JavaPlugin {
             @Override
             public void run() {
                 for (Player player : Bukkit.getOnlinePlayers()) {
-                    if (player.getLocation().getY() <= 1) {
-                        player.getInventory().clear();
-                        player.setGameMode(GameMode.ADVENTURE);
-                        player.setAllowFlight(true);
-                        SWHacksEvents.deadPlayers.add(player);
-                        player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, Integer.MAX_VALUE, 0, false, false));
-                        for (Player pl1 : Bukkit.getOnlinePlayers()) {
-                            if (pl1 != player) {
-                                pl1.hidePlayer(player);
+                    if (player.getLocation().getY() < -53) {
+                        if (!SWHacksEvents.deadPlayers.contains(player)) {
+                            player.getInventory().clear();
+                            player.setGameMode(GameMode.ADVENTURE);
+                            player.setAllowFlight(true);
+                            player.setHealth(20);
+                            player.setFoodLevel(20);
+                            player.setLevel(0);
+                            player.setExp(0);
+                            player.setFireTicks(0);
+                            SWHacksEvents.deadPlayers.add(player);
+                            for (PotionEffect e : player.getActivePotionEffects()) {
+                                player.removePotionEffect(e.getType());
                             }
+                            player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, Integer.MAX_VALUE, 0, false, false));
+                            for (Player pl1 : Bukkit.getOnlinePlayers()) {
+                                if (pl1 != player) {
+                                    pl1.hidePlayer(player);
+                                }
+                            }
+
+                            if (SWHacksEvents.lastAttacker.containsKey(player)) {
+                                SWHacksEvents.playerKills.put(SWHacksEvents.lastAttacker.get(player), SWHacksEvents.playerKills.getOrDefault(SWHacksEvents.lastAttacker.get(player), 0) + 1);
+                                Bukkit.broadcastMessage(SWHacksEvents.nametags.get(player) + " §ewas knocked into the void by " + SWHacksEvents.nametags.get(SWHacksEvents.lastAttacker.get(player)) + "§r§e.");
+                            }
+
+                            else {
+                                Bukkit.broadcastMessage(SWHacksEvents.nametags.get(player) + "§e fell into the void.");
+                            }
+                        }
+
+                        else {
+                            player.teleport(new Location(player.getWorld(), 0, 100, 0));
                         }
                     }
                 }
