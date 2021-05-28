@@ -1,0 +1,26 @@
+main: com.sprintkeyz.swhacks.SWHacks
+name: SWHacks
+version: 1.0
+author: SprintKeyz
+api-version: 1.8
+website: youtube.com/sprintkeyz
+
+commands:
+  api:
+    description: sets API key!
+    usage: /api <key>
+
+  resetmap:
+    description: resets the map!
+    usage: /resetmap
+    aliases: [rm]
+
+  resetcages:
+    description: resets cages!
+    usage: /resetcages
+    aliases: [rc]
+
+  resetblocks:
+    description: resets player-placed blocks!
+    usage: /resetblocks
+    aliases: [rb]
