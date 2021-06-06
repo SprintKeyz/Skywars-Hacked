@@ -55,6 +55,8 @@ public class SWHacksEvents implements Listener, CommandExecutor {
     public static int countdown = 15;
     public static boolean noDamage = false;
 
+    public static int rawRefillCountdown = 178; // 178 seconds = 2:58
+
     public static ArrayList<Chest> alreadyOpened = new ArrayList<>();
 
     public static ArrayList<Player> deadPlayers = new ArrayList<>();
@@ -593,6 +595,7 @@ public class SWHacksEvents implements Listener, CommandExecutor {
                             player.playSound(player.getLocation(), Sound.PORTAL_TRIGGER, 10f, 0.95f);
                         }
                         gameStarted = true;
+                        refillCountdown();
                         for (Player p : Bukkit.getOnlinePlayers()) {
                             removeCage(p);
                             Bukkit.getScheduler().scheduleSyncDelayedTask(JavaPlugin.getProvidingPlugin(SWHacksEvents.class), new Runnable() {
@@ -614,6 +617,39 @@ public class SWHacksEvents implements Listener, CommandExecutor {
                 }
             }.runTaskTimer(JavaPlugin.getProvidingPlugin(SWHacksEvents.class), 0, 20);
         }
+    }
+
+    private void refillCountdown() {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (rawRefillCountdown > 0) {
+                    rawRefillCountdown--;
+                }
+
+                else {
+                    alreadyOpened.clear();
+                    this.cancel();
+                }
+            }
+        }.runTaskTimer(JavaPlugin.getProvidingPlugin(SWHacksEvents.class), 0, 20);
+    }
+
+    private String generateString(Integer num) {
+        int min = rawRefillCountdown/60;
+        int sec = rawRefillCountdown%60;
+
+        String retVal = "null";
+
+        if (sec < 10) {
+            retVal = (min + ":0" + sec);
+        }
+
+        else {
+            retVal = (min + ":" + sec);
+        }
+
+        return retVal;
     }
 
     public void giveKits(Player player) {
@@ -987,7 +1023,7 @@ public class SWHacksEvents implements Listener, CommandExecutor {
                         int[] slotsrand = new Random().ints(0, 26).distinct().limit(9).toArray();
                         ArrayList<ItemStack> finalitems = new ArrayList<>();
                         Collections.shuffle(Arrays.asList(onePerChest));
-                        int onePerChestRand = random.nextInt(8);
+                        int onePerChestRand = random.nextInt(5);
                         finalitems.add(onePerChest[onePerChestRand]);
                         for (int i=0; i<5; i++) {
                             finalitems.add(swords_bows[i]);
@@ -1140,6 +1176,8 @@ public class SWHacksEvents implements Listener, CommandExecutor {
         }
     }
 
+    ScoreboardManager manager = Bukkit.getScoreboardManager();
+
     @EventHandler
     public void setScoreboardOnJoin(PlayerJoinEvent e) {
         Player player = e.getPlayer();
@@ -1148,7 +1186,6 @@ public class SWHacksEvents implements Listener, CommandExecutor {
             @Override
             public void run() {
                 if (gameStarted == false) {
-                    ScoreboardManager manager = Bukkit.getScoreboardManager();
                     Scoreboard board = manager.getNewScoreboard();
                     Objective objective = board.registerNewObjective("test", "dummy");
                     objective.setDisplayName("§e§lSKYWARS");
@@ -1195,7 +1232,6 @@ public class SWHacksEvents implements Listener, CommandExecutor {
                 }
 
                 else {
-                    ScoreboardManager manager = Bukkit.getScoreboardManager();
                     Scoreboard gameboard = manager.getNewScoreboard();
                     Objective objective = gameboard.registerNewObjective("test", "dummy");
                     objective.setDisplayName("§e§lSKYWARS");
@@ -1227,7 +1263,7 @@ public class SWHacksEvents implements Listener, CommandExecutor {
                     Score nEventText = objective.getScore("§fNext Event:");
                     nEventText.setScore(11);
 
-                    Score nextEvent = objective.getScore("§aRefill 2:58");
+                    Score nextEvent = objective.getScore("§aRefill " + generateString(rawRefillCountdown));
                     nextEvent.setScore(10);
 
                     int remaining = Bukkit.getOnlinePlayers().size() - deadPlayers.size();
@@ -1248,6 +1284,16 @@ public class SWHacksEvents implements Listener, CommandExecutor {
                 }
             }
         }.runTaskTimer(JavaPlugin.getProvidingPlugin(SWHacksEvents.class), 0, 3);
+    }
+
+    @EventHandler
+    public void healthScoreboard(PlayerJoinEvent e) {
+        Player player = e.getPlayer();
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+            }
+        }.runTaskTimer(JavaPlugin.getProvidingPlugin(SWHacksEvents.class), 0, 10);
     }
 
     @EventHandler
